@@ -1,103 +1,166 @@
-import Image from "next/image";
+"use client"
 
-export default function Home() {
+import { useState } from "react"
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts"
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { DollarSign, TrendingUp, Check } from "lucide-react"
+
+export default function BettingDashboard() {
+  const [balance, setBalance] = useState(0)
+  const [deposit, setDeposit] = useState("")
+  const [balanceHistory, setBalanceHistory] = useState([
+    { time: "00:00", amount: 0 },
+    { time: "01:00", amount: 0 },
+    { time: "02:00", amount: 0 },
+  ])
+  const [bets, setBets] = useState([
+    { id: 1, name: "Team A vs Team B", odds: "+150", status: "pending", amount: 50 },
+    { id: 2, name: "Player X Total Points", odds: "-110", status: "won", amount: 100 },
+    { id: 3, name: "Game C Over/Under", odds: "+200", status: "lost", amount: 75 },
+  ])
+
+  // Handle deposit submission
+  const handleDeposit = () => {
+    const amount = Number.parseFloat(deposit)
+    if (!isNaN(amount) && amount > 0) {
+      setBalance((prevBalance) => prevBalance + amount)
+      setDeposit("")
+
+      // Update balance history
+      const now = new Date()
+      const timeString = `${now.getHours()}:${now.getMinutes().toString().padStart(2, "0")}`
+
+      setBalanceHistory((prev) => [...prev, { time: timeString, amount: prev[prev.length - 1].amount + amount }])
+    }
+  }
+
+  // Get status color for badges
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "won":
+        return "bg-green-500 hover:bg-green-600"
+      case "lost":
+        return "bg-red-500 hover:bg-red-600"
+      default:
+        return "bg-yellow-500 hover:bg-yellow-600"
+    }
+  }
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <div className="container mx-auto p-4 max-w-6xl">
+      <h1 className="text-2xl font-bold mb-6">Betting Dashboard</h1>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Deposit Component */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <DollarSign className="mr-2 h-5 w-5" />
+              Deposit Funds
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Current Balance</p>
+                <p className="text-2xl font-bold">${balance.toFixed(2)}</p>
+              </div>
+              <div className="flex space-x-2">
+                <Input
+                  type="number"
+                  placeholder="Amount"
+                  value={deposit}
+                  onChange={(e) => setDeposit(e.target.value)}
+                  className="flex-1"
+                />
+                <Button onClick={handleDeposit}>Deposit</Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Line Chart Component */}
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <TrendingUp className="mr-2 h-5 w-5" />
+              Balance Over Time
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[250px]">
+              <ChartContainer
+                config={{
+                  balance: {
+                    label: "Balance",
+                    color: "hsl(var(--chart-1))",
+                  },
+                }}
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={balanceHistory}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="time" tickLine={false} axisLine={false} />
+                    <YAxis tickFormatter={(value) => `$${value}`} tickLine={false} axisLine={false} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Line
+                      type="monotone"
+                      dataKey="amount"
+                      stroke="var(--color-balance)"
+                      strokeWidth={2}
+                      dot={{ r: 4 }}
+                      activeDot={{ r: 6 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Bets Dashboard Component */}
+        <Card className="md:col-span-3">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Check className="mr-2 h-5 w-5" />
+              Your Bets
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-3 px-2">Bet</th>
+                    <th className="text-left py-3 px-2">Odds</th>
+                    <th className="text-left py-3 px-2">Amount</th>
+                    <th className="text-left py-3 px-2">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bets.map((bet) => (
+                    <tr key={bet.id} className="border-b hover:bg-muted/50">
+                      <td className="py-3 px-2">{bet.name}</td>
+                      <td className="py-3 px-2">{bet.odds}</td>
+                      <td className="py-3 px-2">${bet.amount}</td>
+                      <td className="py-3 px-2">
+                        <Badge className={getStatusColor(bet.status)}>
+                          {bet.status.charAt(0).toUpperCase() + bet.status.slice(1)}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
-  );
+  )
 }
+
