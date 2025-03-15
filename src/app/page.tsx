@@ -7,7 +7,7 @@ import GamesDashboard from "../comps/gamesdashboard"
 export default function BettingDashboard() {
 
   return (
-    <div>
+    <div className="py-2">
     <MainPage />
 
     <GamesDashboard />

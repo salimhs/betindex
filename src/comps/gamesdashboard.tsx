@@ -28,7 +28,7 @@ export default function GamesDashboard() {
     }
 
     return (
-    <Card className="md:col-span-3">
+    <Card className="mx-auto bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm md:col-span-3 px-4 max-w-6xl">
     <CardHeader>
       <CardTitle className="flex items-center">
         <Check className="mr-2 h-5 w-5" />
