@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { DollarSign, TrendingUp, Check } from "lucide-react"
 import { useUser } from "@auth0/nextjs-auth0/client"
-import { confirmDbAccount, getProfile } from "@/app/actions"
+import { confirmDbAccount, getProfile, userInvest } from "@/app/actions"
 
 export default function BettingDashboard() {
   const [balance, setBalance] = useState(0)
@@ -23,9 +23,10 @@ export default function BettingDashboard() {
 
   const [verifiedCheck, setVerified] = useState(false)
   const { user, error, isLoading } = useUser();
-
+ const [betMessage, setBstMsg] = useState<string>('')
   // Handle deposit submission
   const handleDeposit = async () => {
+segBetMsg('')
     if(!user || !user.sub || !user.nickname || !user.picture){
       console.log("lol nah");
       return;
@@ -34,7 +35,14 @@ export default function BettingDashboard() {
     if(!quickProf){
       await confirmDbAccount(user.sub, user.nickname, user.picture);
     }
+
+    await makeBet(amount
     const amount = Number.parseFloat(deposit)
+    const investResult = await userInvest(user.sub, amount);
+     if(investResult != true){
+     setBetMsg("Something went wrong trying to invest.")
+     return;
+}
     if (!isNaN(amount) && amount > 0) {
       setBalance((prevBalance) => prevBalance + amount)
       setDeposit("")
@@ -45,6 +53,8 @@ export default function BettingDashboard() {
 
       setBalanceHistory((prev) => [...prev, { time: timeString, amount: prev[prev.length - 1].amount + amount }])
     }
+    
+
   }
 
   return (
@@ -77,6 +87,9 @@ export default function BettingDashboard() {
                 />
                 <Button onClick={handleDeposit}>Deposit</Button>
               </div>
+   <div className="my-4"> 
+<p>{investMessage}</p>
+</div>
               {/* Profit Percentage Indicator */}
               <div className="mt-10">
                 <p className="text-xl text-muted-foreground mb-1">Return</p>
