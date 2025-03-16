@@ -41,6 +41,7 @@ export default function BettingDashboard() {
     <div className="container mx-auto p-4 max-w-6xl">
       <h1 className="text-2xl font-bold mb-6">Betting Dashboard</h1>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Signed in */}
         {/* Deposit Component */}
         { user && !isLoading &&
           <Card>
@@ -82,6 +83,7 @@ export default function BettingDashboard() {
           </CardContent>
         </Card>}
 
+  {/* Not Signed in */}
         { !user && !isLoading &&
           <Card>
           <CardHeader>
@@ -90,7 +92,8 @@ export default function BettingDashboard() {
             <div className="m-auto space">
               <div className="flex gap-2 flex-col">
                 <p className="text-2xl font-bold">Not so fast!</p>
-                <p className="text-md text-muted-foreground mb-1"> Want to make money with the big dogs? Make an account to deposit money into the F&Duel fund.</p>
+                <p className="text-md text-muted-foreground mb-1"> Want to make money with the big dogs? 
+                  Make an account to deposit money into the F&Duel500 fund.</p>
               </div>
             </div>
             <div className="mx-auto  flex justify-center">
