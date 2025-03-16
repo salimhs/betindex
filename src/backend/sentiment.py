@@ -1,11 +1,213 @@
 #!/usr/bin/env python3
-import os, re, math, requests, psycopg2, concurrent.futures
+import os, re, math, requests, psycopg2, concurrent.futures, sys
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 from dotenv import load_dotenv
-
+from datetime import datetime, timezone, timedelta
+from psycopg2.extras import DictCursor
 load_dotenv()
 DB_CONN = os.getenv('DATABASE_URL')
+
+bankroll = 1000
+
+def get_events_from_db():
+    try:
+        conn = psycopg2.connect(DB_CONN, sslmode='require')
+        cur = conn.cursor(cursor_factory=DictCursor)
+        cur.execute("""
+            SELECT sport, home_team, away_team, home_team_odds, away_team_odds,
+                   event_time, home_team_bookmaker, away_team_bookmaker
+            FROM events
+        """)
+        events = cur.fetchall()
+        cur.close()
+        conn.close()
+        events = [dict(event) for event in events]
+        now = datetime.now(timezone.utc)
+        
+        print("All events fetched from DB:")
+        for event in events:
+            print(event)
+        
+        valid_events = []
+        for event in events:
+            event_time = event["event_time"]
+            # Convert naive timestamps to UTC-aware
+            if event_time.tzinfo is None:
+                event_time = event_time.replace(tzinfo=timezone.utc)
+            
+            print(f"Checking event: event_time={event_time}, now={now}")
+            
+            # Filter for future events with valid odds
+            if event_time + timedelta(hours=1) > now and event["home_team_odds"] is not None and event["away_team_odds"] is not None:
+                valid_events.append(event)
+        
+        print("Final valid events:", valid_events)
+        return valid_events
+
+    except Exception as e:
+        print(f"Error fetching events from DB: {e}")
+        return []
+
+
+def decide_bets(events, bankroll, threshold=1.5, edge=0.05, fractional_kelly=0.5):
+    bets = []
+    for event in events:
+        home_odds = event["home_team_odds"]
+        away_odds = event["away_team_odds"]
+
+        # Calculate raw implied probabilities from odds
+        raw_imp_home_prob = 1 / home_odds
+        raw_imp_away_prob = 1 / away_odds
+
+        # Adjust for overround (bookmaker margin)
+        overround = (raw_imp_home_prob + raw_imp_away_prob) - 1
+        # Normalize probabilities to sum to 1
+        imp_home_prob = raw_imp_home_prob / (raw_imp_home_prob + raw_imp_away_prob)
+        imp_away_prob = raw_imp_away_prob / (raw_imp_home_prob + raw_imp_away_prob)
+
+        # Decide which side to favor and adjust the probability based on odds difference
+        if abs(home_odds - away_odds) >= threshold:
+            # Under longshot conditions, assume the underdog is undervalued.
+            if home_odds > away_odds:
+                chosen_team = event["home_team"]
+                adjusted_prob = float(imp_home_prob) + edge
+                chosen_odds = home_odds
+            else:
+                chosen_team = event["away_team"]
+                adjusted_prob = float(imp_away_prob) + edge
+                chosen_odds = away_odds
+        elif home_odds < away_odds:
+            chosen_team = event["home_team"]
+            adjusted_prob = float(imp_home_prob) + (edge / 2)
+            chosen_odds = home_odds
+        else:
+            chosen_team = event["away_team"]
+            adjusted_prob = float(imp_away_prob) + (edge / 2)
+            chosen_odds = away_odds
+
+        # Ensure adjusted probability is valid (capped at 1)
+        adjusted_prob = min(adjusted_prob, 1.0)
+
+        # Calculate Kelly fraction: f* = (b * p - (1-p)) / b, with b = chosen_odds - 1
+        b = chosen_odds - 1
+        if b <= 0:
+            continue  # Skip if odds are non-profitable
+        kelly_fraction = (float(b) * adjusted_prob - (1 - adjusted_prob)) / float(b)
+
+        # Apply fractional Kelly for risk management
+        kelly_fraction *= fractional_kelly
+        kelly_fraction = max(0, min(kelly_fraction, 1))  # Clamp between 0 and 1
+
+        bet_amount = bankroll * kelly_fraction
+
+        # Only place a bet if bet amount is positive
+        if bet_amount > 0:
+            bets.append({
+                "team": chosen_team,
+                "amount": bet_amount,
+                "kelly_fraction": kelly_fraction,
+                "odds": chosen_odds,
+                "adjusted_probability": adjusted_prob,
+                "overround": overround
+            })
+
+    return bets
+
+def update_event_sentiment_with_bet(event, bet):
+    sport = event["sport"]
+    home_team = event["home_team"]
+    away_team = event["away_team"]
+    event_time = event["event_time"]
+    home_team_bookmaker = event["home_team_bookmaker"]
+    away_team_bookmaker = event["away_team_bookmaker"]
+    
+    chosen_team = bet["team"]
+    bet_amount = bet["amount"]
+    kelly_fraction = bet["kelly_fraction"]
+    predicted_prob = float(bet["adjusted_probability"])
+    
+    if chosen_team == home_team:
+        home_sentiment = predicted_prob
+        away_sentiment = 1 - predicted_prob
+    else:
+        away_sentiment = predicted_prob
+        home_sentiment = 1 - predicted_prob
+
+    sentiment_diff = abs(home_sentiment - away_sentiment)
+
+    insert_sql = """
+        INSERT INTO predictions (
+            sport,
+            home_team,
+            away_team,
+            event_time,
+            home_sentiment,
+            away_sentiment,
+            sentiment_diff,
+            predicted_prob,
+            kelly_fraction,
+            recommended_bet_amount,
+            home_team_bookmaker,
+            away_team_bookmaker
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (sport, home_team, away_team, event_time)
+        DO UPDATE SET
+            home_sentiment = EXCLUDED.home_sentiment,
+            away_sentiment = EXCLUDED.away_sentiment,
+            sentiment_diff = EXCLUDED.sentiment_diff,
+            predicted_prob = EXCLUDED.predicted_prob,
+            kelly_fraction = EXCLUDED.kelly_fraction,
+            recommended_bet_amount = EXCLUDED.recommended_bet_amount,
+            home_team_bookmaker = EXCLUDED.home_team_bookmaker,
+            away_team_bookmaker = EXCLUDED.away_team_bookmaker
+        ;
+    """
+
+    try:
+        conn = psycopg2.connect(DB_CONN, sslmode='require')
+        cur = conn.cursor()
+        # Note that we now have 12 total values in the tuple matching 12 placeholders.
+        cur.execute(insert_sql, (
+            sport,
+            home_team,
+            away_team,
+            event_time,
+            home_sentiment,
+            away_sentiment,
+            sentiment_diff,
+            predicted_prob,
+            kelly_fraction,
+            bet_amount,
+            home_team_bookmaker,
+            away_team_bookmaker
+        ))
+        conn.commit()
+        print(f"Upsert complete for {sport} | {home_team} vs {away_team} | {event_time}.")
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print(f"Error upserting event sentiment: {e}")
+
+
+
+
+
+
+
+def main():
+    events = get_events_from_db()
+    bets = decide_bets(events, bankroll)
+    for event, bet in zip(events, bets):
+        update_event_sentiment_with_bet(event, bet)
+        print(bet)
+
+if __name__ == "__main__":
+    sys.exit(main())
+
+
+'''
 
 sentiment_lexicon = {
     "good": 1.0,
@@ -266,3 +468,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+'''
