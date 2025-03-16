@@ -38,7 +38,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV="C:\Users\sahil\Documents\repos\betindex"
+VIRTUAL_ENV="C:\Users\masou\Documents\GitHub\betindex"
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"
