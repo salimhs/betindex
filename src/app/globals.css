@@ -121,3 +121,19 @@
     @apply bg-background text-foreground;
   }
 }
+
+
+/* animations soz */
+.game-cont{
+  animation-name: game-cont;
+  animation-duration: 3s;
+}
+
+@keyframes game-cont{
+  from{
+    max-height: 1px;
+  }
+  to{
+    max-height: 3000px;
+  }
+}

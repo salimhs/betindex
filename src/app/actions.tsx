@@ -7,7 +7,7 @@ const sql = neon(env.DATABASE_URL)
 
 export interface userDetails{
     nickname: string, 
-    balance: string,
+    balance: number,
     moneyIn: number,
     picture: string
 }
@@ -25,6 +25,16 @@ export interface portfolio{
     growth: number
 }
 
+export interface eventTeam{
+    bookmaker: string,
+    odds: number,
+    name: string
+}
+export interface eventObj{
+    home: eventTeam,
+    away: eventTeam,
+    time: Date
+}
 export async function getProfile(auth: string) : Promise<userDetails|null>{
     //gets profile details using the Auth0 id from Auth0's UserProvider
     const res = await sql`select * from profiles where "auth0_id" = ${auth}`
@@ -68,4 +78,29 @@ export async function getPortfolio(auth: string) : Promise<portfolio> {
         input: res[0].input,
         growth: res[0].growth
     }
+}
+
+export async function getUpcomingGames() : Promise<eventObj[]>{
+//     const data = await sql`SELECT * FROM events 
+// WHERE event_time > NOW()
+// ORDER BY event_time limit 3;`
+const data = await sql`select * from events limit 3;`
+
+    const eventArr : eventObj[] = [];
+    data.forEach((ev)=>{
+        eventArr.push({
+            home: {
+                bookmaker: ev.home_team_bookmaker,
+                odds: ev.home_team_odds,
+                name: ev.home_team
+            },
+            away: {
+                bookmaker: ev.away_team_bookmaker,
+                odds: ev.away_team_odds,
+                name: ev.away_team
+            },
+            time: ev.event_time
+        })
+    })
+    return eventArr;
 }

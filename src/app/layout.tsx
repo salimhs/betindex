@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
 import { UserProvider } from '@auth0/nextjs-auth0/client';
+import { TopBar } from "@/comps/topbar";
 
 
 const geistSans = Geist({
@@ -29,9 +30,11 @@ export default function RootLayout({
     <html lang="en">
       
       <UserProvider>
+        
         <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <TopBar></TopBar>
         {children}
       </body>
       </UserProvider>
