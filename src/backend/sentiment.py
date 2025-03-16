@@ -189,6 +189,8 @@ def update_event_sentiment_with_bet(event, bet):
         conn.close()
     except Exception as e:
         print(f"Error upserting event sentiment: {e}")
+        
+    
 
 
 

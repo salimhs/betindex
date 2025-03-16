@@ -15,10 +15,10 @@ now_utc = datetime.now(pytz.utc)
 hour_utc = now_utc.hour
 
 
-if 22 <= hour_utc or hour_utc < 5:
-    best_region = "us" 
+if hour_utc >= 22 or hour_utc < 5:
+    best_region = "us"
 elif 17 <= hour_utc < 22:
-    best_region = "eu" 
+    best_region = "eu"
 elif 5 <= hour_utc < 12:
     best_region = "au"
 else:
@@ -67,8 +67,8 @@ def fetch_h2h():
             # Extract team names and odds
             home_team = event["home_team"]
             away_team = event["away_team"]
-            home_team_odds = best_odds.get(home_team, None)
-            away_team_odds = best_odds.get(away_team, None)
+            home_team_odds = best_odds.get(home_team)
+            away_team_odds = best_odds.get(away_team)
             home_team_bookmaker = best_bookmaker.get(home_team, "Unknown Bookmaker")
             away_team_bookmaker = best_bookmaker.get(away_team, "Unknown Bookmaker")
 
