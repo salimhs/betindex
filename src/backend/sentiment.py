@@ -15,7 +15,7 @@ def get_events_from_db():
         conn = psycopg2.connect(DB_CONN, sslmode='require')
         cur = conn.cursor(cursor_factory=DictCursor)
         cur.execute("""
-            SELECT sport, home_team, away_team, home_team_odds, away_team_odds,
+            SELECT game_id, sport, home_team, away_team, home_team_odds, away_team_odds,
                    event_time, home_team_bookmaker, away_team_bookmaker
             FROM events
         """)
@@ -115,6 +115,7 @@ def decide_bets(events, bankroll, threshold=1.5, edge=0.05, fractional_kelly=0.5
     return bets
 
 def update_event_sentiment_with_bet(event, bet):
+    game_id = event["game_id"]
     sport = event["sport"]
     home_team = event["home_team"]
     away_team = event["away_team"]
@@ -138,6 +139,7 @@ def update_event_sentiment_with_bet(event, bet):
 
     insert_sql = """
         INSERT INTO predictions (
+            game_id
             sport,
             home_team,
             away_team,
@@ -154,6 +156,7 @@ def update_event_sentiment_with_bet(event, bet):
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (sport, home_team, away_team, event_time)
         DO UPDATE SET
+            game_id = EXCLUDED.game_id
             home_sentiment = EXCLUDED.home_sentiment,
             away_sentiment = EXCLUDED.away_sentiment,
             sentiment_diff = EXCLUDED.sentiment_diff,
@@ -169,7 +172,8 @@ def update_event_sentiment_with_bet(event, bet):
         conn = psycopg2.connect(DB_CONN, sslmode='require')
         cur = conn.cursor()
         # Note that we now have 12 total values in the tuple matching 12 placeholders.
-        cur.execute(insert_sql, (
+        cur.execute(insert_sql, 
+            game_id,
             sport,
             home_team,
             away_team,
@@ -182,7 +186,7 @@ def update_event_sentiment_with_bet(event, bet):
             bet_amount,
             home_team_bookmaker,
             away_team_bookmaker
-        ))
+        )
         conn.commit()
         print(f"Upsert complete for {sport} | {home_team} vs {away_team} | {event_time}.")
         cur.close()
@@ -190,7 +194,7 @@ def update_event_sentiment_with_bet(event, bet):
     except Exception as e:
         print(f"Error upserting event sentiment: {e}")
         
-    
+
 
 
 

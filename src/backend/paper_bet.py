@@ -14,7 +14,7 @@ def settle_bets_with_theoddsapi():
     """
     # 1. Fetch all pending bets
     select_sql = """
-        SELECT bet_id, oddsapi_game_id, sport, home_team, away_team, event_time, chosen_team, stake, odds
+        SELECT bet_id, game_id, sport, home_team, away_team, event_time, chosen_team, stake, odds
         FROM paper_bets
         WHERE bet_status = 'pending'
           AND event_time < NOW()  -- only settle events in the past
