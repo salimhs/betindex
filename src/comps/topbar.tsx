@@ -80,7 +80,9 @@ export const TopBar = ({}) => {
             <a href={"/profile"} className='flex flex-row justify-around items-center flex-wrap w-32 rounded-md hover:bg-primary/90 py-2 cursor-pointer'>
                 <Image className='rounded-md' src={userDetails.picture ? userDetails.picture : "https://trenchtownpolytechnic.edu.jm/wp-content/uploads/2022/06/person-placeholder-image.png"} 
                 alt = "Your profile picture" width={40} height={40}></Image>
-                <p>{`\$${userDetails.balance.toFixed(2)}`}</p>
+                {/* <p>{`\$${userDetails.balance.toFixed(2)}`}</p> */}
+                <p>{`\$${userDetails.balance}`}</p>
+
             </a>}
 
             {!userDetails && user && !userLoading &&
@@ -107,8 +109,11 @@ export const EventBox :FC<{event: eventObj}> = ({event}) => {
                     <p className='text-gray-400 w-1/4 text-right'>{event.away.odds}</p>
                 </div>
             </div>
-            <div className='items-center flex justify-center text-xs pt-1'>
+            <div className='items-center flex justify-evenly text-xs px-2'>
+                <p>{new Date(event.time.getTime() - (4 * (60*60*1000))).toLocaleDateString("en-us")}</p>
                 <p>{new Date(event.time.getTime() - (4 * (60*60*1000))).toLocaleTimeString("en-us", {  hour: "2-digit", minute: "2-digit" })}</p>
+
+            {/* toLocaleDateString("en-US") */}
             </div>
         </div>
     )

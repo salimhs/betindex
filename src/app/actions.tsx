@@ -129,3 +129,36 @@ export async function getOldInvestments(auth:string) : Promise<investment[]>{
     })
     return investmentArr;
 }
+
+export async function userInvest(auth: string, amount: number) : Promise<boolean>{
+    const res = await sql`select * from profiles where "balance" - ${amount} > 0 and "auth0_id" = ${auth}`
+    if(res.length < 1){
+        return false;
+    }
+    await sql`insert into investments ("auth0_id", "amount", "starting_balance") select ${auth}, ${amount}, "balance" 
+    from profiles
+    where "auth0_id"=${auth}`
+    return true;
+}
+
+export async function pullout (auth: string) {
+    //let data = await sql`select sum(amount) from investments where "auth0_id" = ${auth} and "end_date" is null`
+    let data = await sql`select money_in from profiles where "auth0_id" = ${auth} and "end_date" is null`
+
+    const totalAmount = data[0].sum
+    //10000 hardcoded for the growth of the fund
+    await sql`update investments set "result" = (( 10000 / ${totalAmount}) * "amount") where "auth0_id" = ${auth} and "end_date" is null`
+    await sql`update investments set "end_date" = NOW() where "end_date" is null`
+
+     data = await sql`select sum(return) from investments where "auth0_id" = ${auth} and "end_date" is null`
+     const profit = data[0].sum
+    await sql`update profiles set "balance" = "balance" + ${profit} where "auth0_id" = ${auth}`
+
+    data = await sql`select(sum(return) / sum(amount) ) * 100 as res from investments where "auth0_id" =  ${auth}`
+    await sql`update portfolios set "growth" = ${data[0].res} "auth0_id" = ${auth} `
+
+    data = await sql`select sum(amount) from investments where "auth0_id" =  ${auth}`
+    const totalInput = data[0].sum
+     await sql`update portfolios set input = ${totalInput} where portfolios."auth0_id" = ${auth}`
+
+}
