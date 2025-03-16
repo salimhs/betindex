@@ -125,3 +125,8 @@ export async function getOldInvestments(auth:string) : Promise<investment[]>{
     })
     return investmentArr;
 }
+
+export async function userInvest : Promise<boolean>{
+
+
+}
