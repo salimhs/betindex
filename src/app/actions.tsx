@@ -7,7 +7,7 @@ const sql = neon(env.DATABASE_URL)
 
 export interface userDetails{
     nickname: string, 
-    balance: string,
+    balance: number,
     moneyIn: number,
     picture: string
 }
