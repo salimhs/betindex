@@ -126,7 +126,13 @@
 /* animations soz */
 .game-cont{
   animation-name: game-cont;
+  overflow:hidden;
+  
   animation-duration: 3s;
+}
+.game-cont-inside::-webkit-scrollbar { 
+  display: none;  /* Safari and Chrome */
+
 }
 
 @keyframes game-cont{

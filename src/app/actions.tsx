@@ -81,10 +81,10 @@ export async function getPortfolio(auth: string) : Promise<portfolio> {
 }
 
 export async function getUpcomingGames() : Promise<eventObj[]>{
-//     const data = await sql`SELECT * FROM events 
-// WHERE event_time > NOW()
-// ORDER BY event_time limit 3;`
-const data = await sql`select * from events limit 3;`
+    const data = await sql`SELECT * FROM events 
+WHERE event_time > NOW()
+ORDER BY event_time limit 10;`
+//const data = await sql`select * from events limit 10;`
 
     const eventArr : eventObj[] = [];
     data.forEach((ev)=>{
@@ -103,4 +103,8 @@ const data = await sql`select * from events limit 3;`
         })
     })
     return eventArr;
+}
+
+export async function confirmDbAccount(auth: string, nickname: string){
+    await sql`insert into users ("auth0_id", "nickname") values (${auth}, ${nickname})`
 }
