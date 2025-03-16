@@ -4,10 +4,9 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { DollarSign, TrendingUp, Check } from "lucide-react"
+import { DollarSign, TrendingUp } from "lucide-react"
 import { useUser } from "@auth0/nextjs-auth0/client"
-import { confirmDbAccount, getProfile } from "@/app/actions"
+import { confirmDbAccount, getProfile, userInvest} from "@/app/actions"
 
 export default function BettingDashboard() {
   const [balance, setBalance] = useState(0)
@@ -21,11 +20,13 @@ export default function BettingDashboard() {
   const initialBalance = 1000
   const profitPercentage = ((balance - initialBalance) / initialBalance) * 100
 
-  const [verifiedCheck, setVerified] = useState(false)
+  //const [verifiedCheck, setVerified] = useState(false)
   const { user, error, isLoading } = useUser();
 
+  const [betMsg, setBetMsg] = useState("")
   // Handle deposit submission
   const handleDeposit = async () => {
+    setBetMsg("");
     if(!user || !user.sub || !user.nickname || !user.picture){
       console.log("lol nah");
       return;
@@ -35,6 +36,11 @@ export default function BettingDashboard() {
       await confirmDbAccount(user.sub, user.nickname, user.picture);
     }
     const amount = Number.parseFloat(deposit)
+    const betResult = await userInvest(user.sub, amount)
+    if(!betResult){
+      setBetMsg("Something went wrong.");
+      return;
+    }
     if (!isNaN(amount) && amount > 0) {
       setBalance((prevBalance) => prevBalance + amount)
       setDeposit("")
@@ -65,9 +71,11 @@ export default function BettingDashboard() {
             <div className="space-y-4">
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Current Balance</p>
-                <p className="text-2xl font-bold">${balance.toFixed(2)}</p>
+                {/* <p className="text-2xl font-bold">${balance.toFixed(2)}</p> */}
+                <p className="text-2xl font-bold">${balance}</p>
+
               </div>
-              <div className="flex space-x-2">
+              <div className="flex gap-2 flex-col">
                 <Input
                   type="number"
                   placeholder="Amount"
@@ -75,8 +83,11 @@ export default function BettingDashboard() {
                   onChange={(e) => setDeposit(e.target.value)}
                   className="flex-1"
                 />
-                <Button onClick={handleDeposit}>Deposit</Button>
+                <Button disabled={!(Number.parseFloat(deposit)>=10)} onClick={handleDeposit}>Deposit</Button>
               </div>
+
+
+              <p>{betMsg}</p>
               {/* Profit Percentage Indicator */}
               <div className="mt-10">
                 <p className="text-xl text-muted-foreground mb-1">Return</p>
