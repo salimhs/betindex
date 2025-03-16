@@ -81,10 +81,10 @@ export async function getPortfolio(auth: string) : Promise<portfolio> {
 }
 
 export async function getUpcomingGames() : Promise<eventObj[]>{
-    const data = await sql`SELECT * FROM events 
-WHERE event_time > NOW()
-ORDER BY event_time limit 10;`
-//const data = await sql`select * from events limit 10;`
+//     const data = await sql`SELECT * FROM events 
+// WHERE event_time > NOW()
+// ORDER BY event_time limit 10;`
+const data = await sql`select * from events limit 10;`
 
     const eventArr : eventObj[] = [];
     data.forEach((ev)=>{
@@ -105,6 +105,23 @@ ORDER BY event_time limit 10;`
     return eventArr;
 }
 
-export async function confirmDbAccount(auth: string, nickname: string){
-    await sql`insert into users ("auth0_id", "nickname") values (${auth}, ${nickname})`
+export async function confirmDbAccount(auth: string, nickname: string, picture: string){
+    await sql`insert into profiles ("auth0_id", "nickname", "picture") values (${auth}, ${nickname}, ${picture})`
+}
+
+export async function getOldInvestments(auth:string) : Promise<investment[]>{
+    const res = await sql`select * from investments where "end_date" is not NULL and "auth0_id" = ${auth}`
+
+
+    const investmentArr : investment[] = [];
+    res.forEach((inv)=>{
+        investmentArr.push({
+            amount: inv.amount as number,
+            startDate: inv.start_date as Date,
+            endDate: inv.end_date,
+            return: inv.return,
+            starting: inv.starting_balance as number,
+        })
+    })
+    return investmentArr;
 }

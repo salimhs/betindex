@@ -3,6 +3,7 @@ import { confirmDbAccount, eventObj, getProfile, getUpcomingGames, userDetails }
 import { Button } from '@/components/ui/button';
 import { useUser } from '@auth0/nextjs-auth0/client';
 import Image from 'next/image';
+import Link from 'next/link';
 import { FC, useEffect, useState } from 'react';
 
 
@@ -45,15 +46,16 @@ export const TopBar = ({}) => {
   if (error) return <></>;
 
   return(
-    <div className='justify-between flex flex-row items-center p-2 px-4 text-white bg-black h-[132px]'>
+    <div className='justify-between flex flex-row items-center p-2 px-4 text-white bg-black h-[132px] expand-anim'>
 
-        <div className='flex items-center h-full'>
+        <a href={"/"} 
+        className='flex my-auto px-1 flex-row justify-around items-center flex-wrap w-36 rounded-md hover:bg-primary/90 py-2 cursor-pointer'>
             <h1 className="text-2xl font-bold">F&Duel500</h1>
-        </div>
+        </a>
         
         {!loadingGames &&
         <div className='px-2 flex-1 max-w-3/4 game-cont'>
-            <div className='game-cont-inside container flex flex-row justify-between flex-1 py-2 px-2 bg-white rounded-md overflow-x-auto gap-1 border-1 '>
+            <div className='game-cont-inside container justify-start flex flex-row flex-1 py-2 px-2 bg-white rounded-md overflow-x-auto gap-1 border-1 '>
             {upcomingGames.map((ev, i)=>{
                 return (
                 <div className='min-w-60 max-w-60 h-20 max-h-20' key={i}>
@@ -64,25 +66,29 @@ export const TopBar = ({}) => {
             </div>
         </div>}
 
+        <div className='min-w-32'>
         {!user &&
-                <a  href="/api/auth/login"
-                            target="_blank"
-                            rel="noopener noreferrer">
-                    <Button className='cursor-pointer ' >Log In or Sign Up</Button>
-                    </a>
-}
+                    <a  href="/api/auth/login"
+                                target="_blank"
+                                rel="noopener noreferrer">
+                        <Button className='cursor-pointer ' >Log In or Sign Up</Button>
+                        </a>
+            }
 
-        {userDetails &&
-        <div className='flex flex-row justify-around items-center flex-wrap w-32 rounded-md hover:bg-primary/90 py-2 cursor-pointer'>
-            <Image className='rounded-md' src={userDetails.picture ? userDetails.picture : "https://trenchtownpolytechnic.edu.jm/wp-content/uploads/2022/06/person-placeholder-image.png"} 
-            alt = "Your profile picture" width={40} height={40}></Image>
-            <p>{`\$${userDetails.balance.toFixed(2)}`}</p>
-        </div>}
+            {userDetails &&
+            
+            <a href={"/profile"} className='flex flex-row justify-around items-center flex-wrap w-32 rounded-md hover:bg-primary/90 py-2 cursor-pointer'>
+                <Image className='rounded-md' src={userDetails.picture ? userDetails.picture : "https://trenchtownpolytechnic.edu.jm/wp-content/uploads/2022/06/person-placeholder-image.png"} 
+                alt = "Your profile picture" width={40} height={40}></Image>
+                <p>{`\$${userDetails.balance.toFixed(2)}`}</p>
+            </a>}
 
-        {!userDetails && user && 
-            <Button onClick={createDbAccount}
-            className='cursor-pointer'>Verify Account</Button>
-        }
+            {!userDetails && user && !userLoading &&
+                <Button onClick={createDbAccount}
+                className='cursor-pointer'>Verify Account</Button>
+            }
+        </div>
+        
     </div>
   )
 }
@@ -102,7 +108,7 @@ export const EventBox :FC<{event: eventObj}> = ({event}) => {
                 </div>
             </div>
             <div className='items-center flex justify-center text-xs pt-1'>
-                <p>{event.time.toLocaleTimeString("en-us", {  hour: "2-digit", minute: "2-digit" })}</p>
+                <p>{new Date(event.time.getTime() - (4 * (60*60*1000))).toLocaleTimeString("en-us", {  hour: "2-digit", minute: "2-digit" })}</p>
             </div>
         </div>
     )

@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { DollarSign, TrendingUp, Check } from "lucide-react"
 import { useUser } from "@auth0/nextjs-auth0/client"
+import { confirmDbAccount, getProfile } from "@/app/actions"
 
 export default function BettingDashboard() {
   const [balance, setBalance] = useState(0)
@@ -20,10 +21,19 @@ export default function BettingDashboard() {
   const initialBalance = 1000
   const profitPercentage = ((balance - initialBalance) / initialBalance) * 100
 
+  const [verifiedCheck, setVerified] = useState(false)
   const { user, error, isLoading } = useUser();
 
   // Handle deposit submission
-  const handleDeposit = () => {
+  const handleDeposit = async () => {
+    if(!user || !user.sub || !user.nickname || !user.picture){
+      console.log("lol nah");
+      return;
+    }
+    const quickProf = await getProfile(user.sub);
+    if(!quickProf){
+      await confirmDbAccount(user.sub, user.nickname, user.picture);
+    }
     const amount = Number.parseFloat(deposit)
     if (!isNaN(amount) && amount > 0) {
       setBalance((prevBalance) => prevBalance + amount)

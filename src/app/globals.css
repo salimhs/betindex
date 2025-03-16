@@ -143,3 +143,10 @@
     max-height: 3000px;
   }
 }
+
+.expand-anim{
+  animation-name: game-cont;
+  overflow:hidden;
+  
+  animation-duration: 5s;
+}
