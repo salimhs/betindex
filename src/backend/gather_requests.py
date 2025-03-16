@@ -51,6 +51,7 @@ def fetch_h2h():
             best_bookmaker = {}  # Track which bookmaker offers the best odds
             sport_name = event.get("sport_title", "Unknown Sport")  # Get sport name from API
             event_time = event["commence_time"]
+            game_id = event.get("id", None)
 
             for bookmaker in event["bookmakers"]:
                 for market in bookmaker["markets"]:
@@ -75,10 +76,11 @@ def fetch_h2h():
             # Insert into NeonDB
             cur.execute(
                 """
-                INSERT INTO events (sport, home_team, away_team, home_team_odds, away_team_odds, event_time, home_team_bookmaker, away_team_bookmaker)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO events (game_id, sport, home_team, away_team, home_team_odds, away_team_odds, event_time, home_team_bookmaker, away_team_bookmaker)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
+                    game_id,
                     sport_name,
                     home_team,
                     away_team,
