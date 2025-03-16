@@ -35,16 +35,20 @@ export interface eventObj{
     away: eventTeam,
     time: Date
 }
-export async function getProfile(auth: string) : Promise<userDetails|null>{
-    //gets profile details using the Auth0 id from Auth0's UserProvider
-    const res = await sql`select * from profiles where "auth0_id" = ${auth}`
+export async function getProfile(auth: string): Promise<userDetails|null> {
+    const res = await sql`select * from profiles where "auth0_id" = ${auth}`;
     if(res.length < 1){
         console.log("Sorry, no profile exists with these credentials.");
         return null;
     }
-    console.log(res);
-    return {nickname: res[0].nickname,  balance: res[0].balance, moneyIn: res[0].money_in, picture: res[0].picture};
+    return {
+        nickname: res[0].nickname,
+        balance: Number(res[0].balance),  // Convert to a number
+        moneyIn: res[0].money_in,
+        picture: res[0].picture
+    };
 }
+
 
 export async function createProfile(auth: string, nickname:string, picture:string){
     //creates profile on Neon Postgres DB, using the Auth0 id from Auth0's UserProvider
