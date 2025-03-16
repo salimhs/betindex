@@ -25,7 +25,7 @@ const getTimeLabelClass = (eventTime: string) => {
 }
 
 // Helper function to format a date string to EST in AM/PM format
-const formatEventTime = (eventTime: string) => {
+export const formatEventTime = (eventTime: string) => {
   const eventDate = new Date(eventTime);
   // Format the date using America/New_York timezone for EST/EDT with AM/PM formatting.
   // Adjust options as desired.
