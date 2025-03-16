@@ -2,87 +2,11 @@
 import os, re, math, requests, psycopg2, concurrent.futures
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
-import sys
-from psycopg2.extras import DictCursor
 from dotenv import load_dotenv
-from datetime import datetime, timezone
-import pytz
 
 load_dotenv()
 DB_CONN = os.getenv('DATABASE_URL')
 
-bankroll=1000
-
-def get_events_from_db():
-    try:
-        conn = psycopg2.connect(DB_CONN, sslmode='require')
-        cur = conn.cursor(cursor_factory=DictCursor)  # Use DictCursor to get rows as dictionaries
-        cur.execute("""
-            SELECT sport, home_team, away_team, home_team_odds, away_team_odds,
-                   event_time, home_team_bookmaker, away_team_bookmaker
-            FROM events
-        """)
-        events = cur.fetchall()
-        cur.close()
-        conn.close()
-        # Return events as a list of dictionaries
-        events= [dict(event) for event in events]
-        now = datetime.now(timezone.utc)  # Get current UTC time
-
-        valid_events = []
-        for event in events:
-            event_time = event["event_time"]
-
-            # Convert naive timestamps to UTC-aware
-            if event_time.tzinfo is None:
-                event_time = event_time.replace(tzinfo=timezone.utc)
-
-            # Keep only future events with valid odds
-            if event_time > now and event["home_team_odds"] is not None and event["away_team_odds"] is not None:
-                event["event_time"] = event_time  # Store converted timestamp
-                valid_events.append(event)
-
-        return valid_events
-
-    except Exception as e:
-        print(f"Error fetching events from DB: {e}")
-        return []
-def decide_bets(events, bankroll, threshold=1.5):
-    num_bets = len(events)
-    if num_bets == 0:
-        return []
-
-    base_bet = bankroll / num_bets  # Evenly distribute bankroll
-
-    bets = []
-    total_bet = 0
-
-    for event in events:
-        home_odds = event["home_team_odds"]
-        away_odds = event["away_team_odds"]
-
-        if abs(home_odds - away_odds) >= threshold:
-            bet_team = event["home_team"] if home_odds > away_odds else event["away_team"]
-            bet_amount = base_bet * 0.83  # Reduce bet size for underdog
-        else:
-            bet_team = event["home_team"] if home_odds < away_odds else event["away_team"]
-            bet_amount = base_bet * 1.2  # Increase bet size for favorite
-
-        bets.append({"team": bet_team, "amount": bet_amount})
-        total_bet += bet_amount
-
-    return bets
-    
-
-def main():
-    events = get_events_from_db()
-
-    print(decide_bets(events,bankroll))
-
-if __name__ == "__main__":
-    sys.exit(main())
-
-'''
 sentiment_lexicon = {
     "good": 1.0,
     "great": 2.0,
@@ -242,16 +166,15 @@ def update_event_sentiment(event, home_sentiment, away_sentiment, sentiment_diff
         conn = psycopg2.connect(DB_CONN, sslmode='require')
         cur = conn.cursor()
         cur.execute("""
-            INSERT INTO predictions (
-                sport, home_team, away_team, event_time, 
-                home_sentiment, away_sentiment, sentiment_diff, 
-                predicted_prob, kelly_fraction, recommended_bet_amount
-            )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """, (sport, home_team, away_team, event_time, 
-            home_sentiment, away_sentiment, sentiment_diff, 
-            predicted_prob, kelly_fraction, bet_amount))
-
+            UPDATE predictions
+            SET home_sentiment = %s,
+                away_sentiment = %s,
+                sentiment_diff = %s,
+                predicted_prob = %s,
+                kelly_fraction = %s,
+                recommended_bet_amount = %s
+            WHERE sport = %s AND home_team = %s AND away_team = %s AND event_time = %s
+        """, (home_sentiment, away_sentiment, sentiment_diff, predicted_prob, kelly_fraction, bet_amount, sport, home_team, away_team, event_time))
         conn.commit()
         cur.close()
         conn.close()
@@ -281,48 +204,40 @@ def process_event(event):
         f"Odds: {home_team} = {home_odds}, {away_team} = {away_odds}",
         f"Bookmakers: {home_team} from {home_bookmaker}, {away_team} from {away_bookmaker}",
     ]
-    
     home_articles = scrape_all_team_articles(home_team, news_urls)
     away_articles = scrape_all_team_articles(away_team, news_urls)
-    
-    if not home_articles or not away_articles:
-        # If no articles are found, we set the sentiment to neutral and bet very conservatively.
-        lines.append(f"Articles not found for one or both teams. Placing a conservative bet.")
-        avg_home_sentiment = 0.0
-        avg_away_sentiment = 0.0
-        sentiment_diff = avg_home_sentiment - avg_away_sentiment
-        predicted_prob = sigmoid(alpha * sentiment_diff)
-        kelly_fraction = 0.05  # Very conservative Kelly fraction
-        bet_amount = bankroll * kelly_fraction
-        lines.append(f"Kelly Fraction (Conservative): {kelly_fraction:.3f}")
-        lines.append(f"Recommended Bet Amount: ${bet_amount:.2f}")
+    if not home_articles:
+        lines.append(f"No articles found for '{home_team}'. Skipping this event.")
+        return "\n".join(lines)
+    if not away_articles:
+        lines.append(f"No articles found for '{away_team}'. Skipping this event.")
+        return "\n".join(lines)
+    home_scores = [analyze_sentiment(article) for article in home_articles]
+    away_scores = [analyze_sentiment(article) for article in away_articles]
+    avg_home_sentiment = sum(home_scores) / len(home_scores)
+    avg_away_sentiment = sum(away_scores) / len(away_scores)
+    sentiment_diff = avg_home_sentiment - avg_away_sentiment
+    predicted_prob = sigmoid(alpha * sentiment_diff)
+    home_odds_float = float(home_odds)
+    implied_prob = 1.0 / home_odds_float
+    kelly_fraction = ((home_odds_float - 1) * predicted_prob - (1 - predicted_prob)) / (home_odds_float - 1)
+    kelly_fraction = max(kelly_fraction, 0)
+    bet_amount = bankroll * kelly_fraction
+    lines.append(f"Average Home Sentiment Score: {avg_home_sentiment:.2f}")
+    lines.append(f"Average Away Sentiment Score: {avg_away_sentiment:.2f}")
+    lines.append(f"Sentiment Difference: {sentiment_diff:.2f}")
+    lines.extend(
+        (
+            f"Predicted Probability of {home_team} win (from sentiment): {predicted_prob:.3f}",
+            f"Implied Probability from Odds: {implied_prob:.3f}",
+        )
+    )
+    if predicted_prob - implied_prob > threshold:
+        lines.append("Asymmetric opportunity detected! Favorable betting conditions.")
     else:
-        home_scores = [analyze_sentiment(article) for article in home_articles]
-        away_scores = [analyze_sentiment(article) for article in away_articles]
-        avg_home_sentiment = sum(home_scores) / len(home_scores)
-        avg_away_sentiment = sum(away_scores) / len(away_scores)
-        sentiment_diff = avg_home_sentiment - avg_away_sentiment
-        predicted_prob = sigmoid(alpha * sentiment_diff)
-        
-        home_odds_float = float(home_odds)
-        implied_prob = 1.0 / home_odds_float
-        kelly_fraction = ((home_odds_float - 1) * predicted_prob - (1 - predicted_prob)) / (home_odds_float - 1)
-        kelly_fraction = max(kelly_fraction, 0)  # Avoid negative bet amounts
-
-        # Adjust bet size based on whether asymmetry is detected or not
-        if predicted_prob - implied_prob > threshold:
-            lines.append("Asymmetric opportunity detected! Favorable betting conditions.")
-            # You can keep the original kelly_fraction in case of asymmetry
-        else:
-            lines.append("No significant asymmetry in the odds detected.")
-            # If no asymmetry, reduce the Kelly fraction to bet more conservatively
-            kelly_fraction *= 0.5  # Reduce bet size by 50%
-
-        bet_amount = bankroll * kelly_fraction
-        lines.append(f"Kelly Fraction: {kelly_fraction:.3f}")
-        lines.append(f"Recommended Bet Amount: ${bet_amount:.2f}")
-    
-    # Now, the bet amount will always be calculated and can be placed.
+        lines.append("No significant asymmetry in the odds detected.")
+    lines.append(f"Kelly Fraction: {kelly_fraction:.3f}")
+    lines.append(f"Recommended Bet Amount: ${bet_amount:.2f}")
     if updated := update_event_sentiment(
         event,
         avg_home_sentiment,
@@ -348,5 +263,6 @@ def main():
         print("\n" + "="*50)
         print(report)
         print("="*50)
-'''
 
+if __name__ == "__main__":
+    main()

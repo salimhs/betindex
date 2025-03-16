@@ -215,4 +215,3 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 pyvenv.cfg
-/Scripts
