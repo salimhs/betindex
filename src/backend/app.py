@@ -34,5 +34,4 @@ def events_route():
     return jsonify(events_list)
 
 if __name__ == '__main__':
-    create_bets_table()
     app.run(debug=True, port=5000)

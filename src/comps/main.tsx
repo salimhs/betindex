@@ -4,15 +4,17 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { DollarSign, TrendingUp, Check } from "lucide-react"
 import { useUser } from "@auth0/nextjs-auth0/client"
 
 export default function BettingDashboard() {
-  // Local state for balance, deposit input, and balance history
-  const [balance, setBalance] = useState(1000)  // Start with an initial balance, e.g., 1000
+  const [balance, setBalance] = useState(0)
   const [deposit, setDeposit] = useState("")
-  const [balanceHistory, setBalanceHistory] = useState<{ time: string; amount: number }[]>([
-    { time: new Date().toISOString(), amount: 1000 },
+  const [balanceHistory, setBalanceHistory] = useState([
+    { time: "00:00", amount: 0 },
+    { time: "01:00", amount: 0 },
+    { time: "02:00", amount: 0 },
   ])
 
   const initialBalance = 1000
@@ -20,42 +22,18 @@ export default function BettingDashboard() {
 
   const { user, error, isLoading } = useUser();
 
-  // Handle deposit submission: sends a POST request to the backend.
-  const handleDeposit = async () => {
-    const amount = parseFloat(deposit)
+  // Handle deposit submission
+  const handleDeposit = () => {
+    const amount = Number.parseFloat(deposit)
     if (!isNaN(amount) && amount > 0) {
-      // Record the exact deposit timestamp in ISO format
-      const timestamp = new Date().toISOString()
+      setBalance((prevBalance) => prevBalance + amount)
+      setDeposit("")
 
-      try {
-        // POST request to the backend endpoint.
-        const response = await fetch("http://localhost:5000/api/deposits", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          // Send deposit amount and timestamp in the request body
-          body: JSON.stringify({ amount, timestamp }),
-        })
+      // Update balance history
+      const now = new Date()
+      const timeString = `${now.getHours()}:${now.getMinutes().toString().padStart(2, "0")}`
 
-        if (!response.ok) {
-          throw new Error("Deposit failed")
-        }
-
-        // Expecting backend to return an object like:
-        // { balance: updatedBalance, deposit: { timestamp: string, amount: number } }
-        const data = await response.json()
-
-        // Update local state based on backend response
-        setBalance(data.balance)
-        setBalanceHistory((prev) => [
-          ...prev,
-          { time: data.deposit.timestamp, amount: data.balance },
-        ])
-        setDeposit("")
-      } catch (error) {
-        console.error("Error depositing funds:", error)
-      }
+      setBalanceHistory((prev) => [...prev, { time: timeString, amount: prev[prev.length - 1].amount + amount }])
     }
   }
 
@@ -176,3 +154,4 @@ export default function BettingDashboard() {
     </div>
   )
 }
+
